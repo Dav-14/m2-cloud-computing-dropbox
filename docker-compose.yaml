@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15.3-alpine3.17
+    restart: always
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "$POSTGRES_USER", "-d", "$POSTGRES_DB"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    ports:
+      - ${POSTGRES_EXTERNAL_PORT}:${POSTGRES_PORT}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+  s3proxy:
+    image: andrewgaul/s3proxy:latest
+    restart: always
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:$JCLOUDS_PORT/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - ./s3proxy.conf:/opt/s3proxy/s3proxy.conf
+    ports:
+      - ${JCLOUDS_PORT}:80
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:10000/"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    command: azurite-blob --blobHost 0.0.0.0 --blobPort 10000
+    ports:
+      - 10000:10000
+
+volumes:
+  postgres-data:
